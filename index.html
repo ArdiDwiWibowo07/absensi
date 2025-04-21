@@ -1,207 +1,234 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#317EFB" />
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <title>Check-in Radius + Selfie</title>
-  <style>
-    #map { height: 250px; margin-bottom: 10px; }
-    video, img { width: 100%; }
-    button { margin-top: 10px; display: block; }
-  </style>
-</head>
-<body>
-  <h2>📍 Check-In Radius + Selfie</h2>
-
-  <button id="startBtn" onclick="startTracking()">▶️ Mulai Check-in</button>
-
-  <div id="map"></div>
-  <p id="radius-status">Status: belum terdeteksi</p>
-
-  <div id="camera-area" style="display:none;">
-    <video id="video" autoplay playsinline></video>
-    <button onclick="takeSelfie()">📷 Ambil Selfie</button>
-  </div>
-
-  <div id="result-area" style="display:none;">
-    <img id="selfie" alt="Hasil Foto" />
-    <p id="checkin-time"></p>
-    <p id="location"></p>
-    <button onclick="downloadSelfie()">⬇️ Download Selfie</button>
-    <button onclick="resetCamera()">🔄 Ambil Ulang</button>
-  </div>
-
-  <canvas id="canvas" width="300" height="225" style="display:none;"></canvas>
-
-  <script>
-    let map, marker, circle;
-    let targetLat = -7.7752594;
-    let targetLon =  110.5943244;
-    let radius = 100;
-    let insideRadius = false;
-    let streamRef = null;
-    let imageData = null;
-
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const selfie = document.getElementById('selfie');
-    const locationText = document.getElementById('location');
-    const timeText = document.getElementById('checkin-time');
-    const statusText = document.getElementById('radius-status');
-    const cameraArea = document.getElementById('camera-area');
-    const resultArea = document.getElementById('result-area');
-    const startBtn = document.getElementById('startBtn');
-
-    function speak(msg) {
-      const speech = new SpeechSynthesisUtterance(msg);
-      speech.lang = 'id-ID';
-      speechSynthesis.speak(speech);
-    }
-
-    function checkRadius(lat, lon, current) {
-      const dist = map.distance([lat, lon], [targetLat, targetLon]);
-      const isNowInside = dist <= radius;
-      console.log(isNowInside);
-      
-
-      if (isNowInside && !insideRadius) {
-        speak("Anda masuk area check-in");
-        statusText.textContent = "✅ Anda berada dalam radius check-in";
-        cameraArea.style.display = 'block';
-        startCamera();
-      } else if (!isNowInside && insideRadius) {
-        speak("Anda keluar dari area check-in");
-        statusText.textContent = "❌ Anda berada di luar radius";
-        cameraArea.style.display = 'none';
-        stopCamera();
-      } else if (!isNowInside) {
-        if (current) {
-            speak("Anda keluar dari area check-in");
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#317EFB" />
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>Check-in Radius + Selfie</title>
+    <style>
+        #map {
+            height: 250px;
+            margin-bottom: 10px;
         }
-        statusText.textContent = "Status: Anda di luar radius";
-        cameraArea.style.display = 'none';
-      } else {
-        statusText.textContent = "✅ Anda berada dalam radius check-in";
-      }
 
-      insideRadius = isNowInside;
-    }
+        video,
+        img {
+            width: 100%;
+        }
 
-    function startCamera() {
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-        .then(stream => {
-          streamRef = stream;
-          video.srcObject = stream;
-        })
-        .catch(err => alert('Kamera tidak bisa diakses: ' + err));
-    }
+        button {
+            margin-top: 10px;
+            display: block;
+        }
+    </style>
+</head>
 
-    function stopCamera() {
-      if (streamRef) {
-        streamRef.getTracks().forEach(track => track.stop());
-        streamRef = null;
-        video.srcObject = null;
-      }
-    }
+<body>
+    <h2>📍 Check-In Radius + Selfie</h2>
 
-    function takeSelfie() {
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      imageData = canvas.toDataURL('image/png');
-      selfie.src = imageData;
+    <button id="startBtn" onclick="startTracking()">▶️ Mulai Check-in</button>
 
-      stopCamera();
-      cameraArea.style.display = 'none';
-      resultArea.style.display = 'block';
+    <div id="map"></div>
+    <p id="radius-status">Status: belum terdeteksi</p>
 
-      const now = new Date();
-      const timeString = now.toLocaleString();
-      timeText.innerText = "🕒 Waktu Check-in: " + timeString;
+    <div id="camera-area" style="display:none;">
+        <video id="video" autoplay playsinline></video>
+        <button onclick="takeSelfie()">📷 Ambil Selfie</button>
+    </div>
 
-      localStorage.setItem("selfie", imageData);
-      localStorage.setItem("checkin_time", timeString);
-    }
+    <div id="result-area" style="display:none;">
+        <img id="selfie" alt="Hasil Foto" />
+        <p id="checkin-time"></p>
+        <p id="location"></p>
+        <button onclick="downloadSelfie()">⬇️ Download Selfie</button>
+        <button onclick="resetCamera()">🔄 Ambil Ulang</button>
+    </div>
 
-    function resetCamera() {
-      resultArea.style.display = 'none';
-      cameraArea.style.display = insideRadius ? 'block' : 'none';
-      selfie.src = '';
-      if (insideRadius) startCamera();
-    }
+    <canvas id="canvas" width="300" height="225" style="display:none;"></canvas>
 
-    function downloadSelfie() {
-      const a = document.createElement("a");
-      a.href = imageData;
-      a.download = "selfie-checkin.png";
-      a.click();
-    }
+    <script>
+        let map, marker, circle;
+        let targetLat = -7.7752594;
+        let targetLon = 110.5841276;
+        let radius = 100;
+        let insideRadius = false;
+        let streamRef = null;
+        let imageData = null;
 
-    function updateLocation(lat, lon, current) {
-      checkRadius(lat, lon, current);
-      locationText.innerText = `📍 Lokasi Anda: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-      localStorage.setItem("lat", lat);
-      localStorage.setItem("lon", lon);
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const selfie = document.getElementById('selfie');
+        const locationText = document.getElementById('location');
+        const timeText = document.getElementById('checkin-time');
+        const statusText = document.getElementById('radius-status');
+        const cameraArea = document.getElementById('camera-area');
+        const resultArea = document.getElementById('result-area');
+        const startBtn = document.getElementById('startBtn');
 
-      if (marker) map.removeLayer(marker);
-      marker = L.marker([lat, lon]).addTo(map);
-    }
+        function speak(msg) {
+            const speech = new SpeechSynthesisUtterance(msg);
+            speech.lang = 'id-ID';
+            speechSynthesis.speak(speech);
+        }
 
-    function watchLocation() {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          updateLocation(lat, lon, true);
-        },
-        err => {
-          speak("Gagal mendeteksi lokasi awal.");
-          console.error(err);
-        },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-      );
+        function checkRadius(lat, lon, current) {
+            const dist = map.distance([lat, lon], [targetLat, targetLon]);
+            const isNowInside = dist <= radius;
+            console.log(isNowInside);
 
-      navigator.geolocation.watchPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
-          updateLocation(lat, lon, false);
-        },
-        err => {
-          console.warn("Gagal memantau lokasi:", err);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
 
-    function initMap() {
-      map = L.map('map').setView([targetLat, targetLon], 17);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-      L.marker([targetLat, targetLon]).addTo(map).bindPopup("Titik Check-in");
-      circle = L.circle([targetLat, targetLon], { radius: radius, color: 'blue' }).addTo(map);
-    }
+            if (isNowInside && !insideRadius) {
+                speak("Anda masuk area check-in");
+                statusText.textContent = "✅ Anda berada dalam radius check-in";
+                cameraArea.style.display = 'block';
+                startCamera();
+            } else if (!isNowInside && insideRadius) {
+                speak("Anda keluar dari area check-in");
+                statusText.textContent = "❌ Anda berada di luar radius";
+                cameraArea.style.display = 'none';
+                stopCamera();
+            } else if (!isNowInside) {
+                if (current) {
+                    speak("Anda keluar dari area check-in");
+                }
+                statusText.textContent = "Status: Anda di luar radius";
+                cameraArea.style.display = 'none';
+            } else {
+                statusText.textContent = "✅ Anda berada dalam radius check-in";
+            }
 
-    function startTracking() {
-      startBtn.style.display = 'none';
-      speak("Mendeteksi lokasi...");
-      watchLocation();
-    }
+            insideRadius = isNowInside;
+        }
 
-    window.addEventListener('load', () => {
-      localStorage.removeItem("selfie");
-      localStorage.removeItem("checkin_time");
-      localStorage.removeItem("lat");
-      localStorage.removeItem("lon");
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(stream => {
+                    streamRef = stream;
+                    video.srcObject = stream;
+                })
+                .catch(err => alert('Kamera tidak bisa diakses: ' + err));
+        }
 
-      initMap();
+        function stopCamera() {
+            if (streamRef) {
+                streamRef.getTracks().forEach(track => track.stop());
+                streamRef = null;
+                video.srcObject = null;
+            }
+        }
 
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('service-worker.js');
-      }
-    });
-  </script>
+        function takeSelfie() {
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            imageData = canvas.toDataURL('image/png');
+            selfie.src = imageData;
+
+            stopCamera();
+            cameraArea.style.display = 'none';
+            resultArea.style.display = 'block';
+
+            const now = new Date();
+            const timeString = now.toLocaleString();
+            timeText.innerText = "🕒 Waktu Check-in: " + timeString;
+
+            localStorage.setItem("selfie", imageData);
+            localStorage.setItem("checkin_time", timeString);
+        }
+
+        function resetCamera() {
+            resultArea.style.display = 'none';
+            cameraArea.style.display = insideRadius ? 'block' : 'none';
+            selfie.src = '';
+            if (insideRadius) startCamera();
+        }
+
+        function downloadSelfie() {
+            const a = document.createElement("a");
+            a.href = imageData;
+            a.download = "selfie-checkin.png";
+            a.click();
+        }
+
+        function updateLocation(lat, lon, current) {
+            checkRadius(lat, lon, current);
+            locationText.innerText = `📍 Lokasi Anda: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            localStorage.setItem("lat", lat);
+            localStorage.setItem("lon", lon);
+
+            if (marker) map.removeLayer(marker);
+            marker = L.marker([lat, lon]).addTo(map);
+        }
+
+        function watchLocation() {
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    updateLocation(lat, lon, true);
+                },
+                err => {
+                    speak("Gagal mendeteksi lokasi awal.");
+                    console.error(err);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+
+            navigator.geolocation.watchPosition(
+                pos => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    updateLocation(lat, lon, false);
+                },
+                err => {
+                    console.warn("Gagal memantau lokasi:", err);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function initMap() {
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    updateLocation(lat, lon, true);
+                    map = L.map('map').setView([lat, lon], 17);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    L.marker([targetLat, targetLon]).addTo(map).bindPopup("Titik Check-in");
+                    circle = L.circle([targetLat, targetLon], { radius: radius, color: 'blue' }).addTo(map);
+                },
+                err => {
+                    speak("Gagal mendeteksi lokasi awal.");
+                    console.error(err);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+
+        }
+
+        function startTracking() {
+            startBtn.style.display = 'none';
+            speak("Mendeteksi lokasi...");
+            watchLocation();
+        }
+
+        window.addEventListener('load', () => {
+            localStorage.removeItem("selfie");
+            localStorage.removeItem("checkin_time");
+            localStorage.removeItem("lat");
+            localStorage.removeItem("lon");
+
+            initMap();
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('service-worker.js');
+            }
+        });
+    </script>
 </body>
+
 </html>
